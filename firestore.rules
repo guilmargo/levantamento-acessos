@@ -1,0 +1,38 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Somente este e-mail (verificado pelo link de acesso) vê as respostas
+    function isRH() {
+      return request.auth != null
+        && request.auth.token.email == 'bianca.garcia@vaxxinova.com.br'
+        && request.auth.token.email_verified == true;
+    }
+    function cargoValido(id) { return id.matches('^a[0-9]{1,3}c[0-9]{1,3}$'); }
+
+    // Respostas completas: qualquer gestor envia, só o RH lê
+    match /respostas/{id} {
+      allow read, delete: if isRH();
+      allow create, update: if cargoValido(id)
+        && request.resource.data.keys().hasOnly(['area','cargo','itens','naoPrecisa','respondenteNome','respondenteEmail','atualizadoEm'])
+        && request.resource.data.itens is list && request.resource.data.itens.size() <= 300
+        && request.resource.data.naoPrecisa is list && request.resource.data.naoPrecisa.size() <= 10
+        && request.resource.data.respondenteNome is string && request.resource.data.respondenteNome.size() > 0 && request.resource.data.respondenteNome.size() <= 120
+        && request.resource.data.respondenteEmail is string && request.resource.data.respondenteEmail.size() <= 200
+        && request.resource.data.atualizadoEm == request.time;
+    }
+
+    // Status público (Respondido / Pendente), sem o conteúdo das respostas
+    match /status/{id} {
+      allow read: if true;
+      allow delete: if isRH();
+      allow create, update: if cargoValido(id)
+        && request.resource.data.keys().hasOnly(['respondido','nItens','atualizadoEm'])
+        && request.resource.data.respondido == true
+        && request.resource.data.nItens is int
+        && request.resource.data.atualizadoEm == request.time;
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}
