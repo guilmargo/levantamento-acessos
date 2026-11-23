@@ -3,7 +3,7 @@
 Formulário para os gestores informarem, para cada cargo, os equipamentos, sistemas, SharePoint, e-mail, telefonia e outros acessos de que um novo colaborador precisa. As respostas ficam no Firebase (Firestore) do projeto `rh-pesquisa`.
 
 - **Gestores:** abrem o site, escolhem setor e cargo, respondem as 6 categorias ("Precisa" ou "Não precisa") e enviam com nome e e-mail. Não precisam de login.
-- **RH:** o link "Acesso do RH", no rodapé, envia um link de acesso por e-mail. Só `bianca.garcia@vaxxinova.com.br` consegue abrir o painel, ver as respostas e baixar o Excel.
+- **RH:** o link "Acesso do RH", no rodapé, envia um link de acesso por e-mail. Só `bianca.garcia@vaxxinova.com.br` e `guilherme.camargo@vaxxinova.com.br` conseguem abrir o painel, ver as respostas e baixar o Excel.
 
 ## Configuração no Firebase (uma vez só)
 

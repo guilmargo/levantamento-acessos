@@ -193,7 +193,7 @@ const firebaseConfig = {
   messagingSenderId: "821543790898",
   appId: "1:821543790898:web:8179d9915cab04cd070f2b"
 };
-const RH_EMAIL = "bianca.garcia@vaxxinova.com.br";
+const RH_EMAILS = ["bianca.garcia@vaxxinova.com.br", "guilherme.camargo@vaxxinova.com.br"];
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -490,7 +490,7 @@ function renderLogin(){
 }
 async function sendLink(){
   const L = S.login, em = ($("lg-email").value||"").trim().toLowerCase();
-  if (em !== RH_EMAIL) { L.msg = "Este e-mail não tem acesso ao painel do RH."; renderLogin(); return; }
+  if (!RH_EMAILS.includes(em)) { L.msg = "Este e-mail não tem acesso ao painel do RH."; renderLogin(); return; }
   L.busy = true; L.msg = null; renderLogin();
   try {
     await sendSignInLinkToEmail(auth, em, { url: location.origin + location.pathname, handleCodeInApp: true });
@@ -621,7 +621,7 @@ function boot(){
   }, err => { console.error(err); clearTimeout(timer); S.err = err.code==="permission-denied" ? "Acesso ao banco recusado. Avise o RH." : "Verifique sua conexão e recarregue a página."; renderNotices(); });
   onAuthStateChanged(auth, u => {
     S.user = u;
-    S.isRH = !!(u && u.emailVerified && (u.email||"").toLowerCase() === RH_EMAIL);
+    S.isRH = !!(u && u.emailVerified && RH_EMAILS.includes((u.email||"").toLowerCase()));
     if (unsubResp) { unsubResp(); unsubResp = null; S.resp = {}; }
     if (S.isRH) unsubResp = onSnapshot(collection(db, "respostas"), snap => {
       const next={}; snap.docs.forEach(d=>{ if(BYID[d.id]) next[d.id]=d.data(); }); S.resp=next; onData();
