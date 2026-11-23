@@ -495,7 +495,14 @@ async function sendLink(){
   try {
     await sendSignInLinkToEmail(auth, em, { url: location.origin + location.pathname, handleCodeInApp: true });
     store.set("acc-rh-email", em); L.sent = em;
-  } catch (e) { console.error(e); L.msg = "Não foi possível enviar o link. Tente de novo em alguns minutos."; }
+  } catch (e) {
+    console.error(e);
+    const c = e && e.code;
+    L.msg = c==="auth/operation-not-allowed" ? "O login por link de e-mail não está ativado no Firebase (Authentication → Método de login → E-mail/senha → Link do e-mail)."
+      : (c==="auth/unauthorized-continue-uri" || c==="auth/unauthorized-domain") ? "Este site não está nos domínios autorizados do Firebase (Authentication → Configurações → Domínios autorizados)."
+      : c==="auth/quota-exceeded" ? "Limite diário de envio de links atingido. Tente amanhã."
+      : `Não foi possível enviar o link (${c || "erro desconhecido"}). Tente de novo em alguns minutos.`;
+  }
   L.busy = false; renderLogin();
 }
 async function completeLink(em){
