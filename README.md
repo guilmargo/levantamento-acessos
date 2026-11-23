@@ -3,14 +3,16 @@
 Formulário para os gestores informarem, para cada cargo, os equipamentos, sistemas, SharePoint, e-mail, telefonia e outros acessos de que um novo colaborador precisa. As respostas ficam no Firebase (Firestore) do projeto `rh-pesquisa`.
 
 - **Gestores:** abrem o site, escolhem setor e cargo, respondem as 6 categorias ("Precisa" ou "Não precisa") e enviam com nome e e-mail. Não precisam de login.
-- **RH:** o link "Acesso do RH", no rodapé, envia um link de acesso por e-mail. Só `bianca.garcia@vaxxinova.com.br` e `guilherme.camargo@vaxxinova.com.br` conseguem abrir o painel, ver as respostas e baixar o Excel.
+- **RH:** o link "Acesso do RH", no rodapé, abre o login com e-mail e senha. Só `bianca.garcia@vaxxinova.com.br` e `guilherme.camargo@vaxxinova.com.br` conseguem abrir o painel, ver as respostas e baixar o Excel.
 
 ## Configuração no Firebase (uma vez só)
 
 1. **Firestore Database** → criar o banco (modo produção) se ainda não existir.
 2. **Firestore Database → Regras** → colar o conteúdo de [`firestore.rules`](firestore.rules) e publicar.
-3. **Authentication → Método de login** → ativar **E-mail/senha** e, dentro dele, **Link do e-mail (login sem senha)**.
-4. **Authentication → Configurações → Domínios autorizados** → adicionar `guilmargo.github.io`.
+3. **Authentication → Método de login** → ativar **E-mail/senha**.
+4. **Authentication → Usuários → Adicionar usuário** → criar a conta de cada pessoa do RH (e-mail + senha).
+5. **Authentication → Configurações → Ações do usuário** → desmarcar **Ativar criação (inscrição)**, para ninguém criar conta pelo site.
+6. **Authentication → Configurações → Domínios autorizados** → `guilmargo.github.io` (já adicionado).
 
 ## Estrutura dos dados
 

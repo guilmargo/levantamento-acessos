@@ -2,10 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Somente estes e-mails (verificados pelo link de acesso) veem as respostas
+    // Somente estes e-mails (contas criadas no Firebase Authentication) veem as respostas
     function isRH() {
       return request.auth != null
-        && request.auth.token.email_verified == true
+        && request.auth.token.firebase.sign_in_provider == 'password'
         && request.auth.token.email.lower() in ['bianca.garcia@vaxxinova.com.br', 'guilherme.camargo@vaxxinova.com.br'];
     }
     function cargoValido(id) { return id.matches('^a[0-9]{1,3}c[0-9]{1,3}$'); }

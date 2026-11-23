@@ -183,7 +183,7 @@ body{margin:0}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, doc, onSnapshot, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getAuth, onAuthStateChanged, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAYYCKInGC6COWy4QVg1sqONYNWRePy6QM",
@@ -237,7 +237,7 @@ const S = {
   who: store.json("acc-who", { nome:"", email:"" }),
   area:0, cargo:null, draft:null, dirty:false, msg:null, saving:false, pendingGo:null, showMissing:false,
   pArea:-1, pq:"", pCat:"",
-  login:{ sent:false, needConfirm:false, msg:null, busy:false }
+  login:{ email:"", msg:null, busy:false }
 };
 let unsubResp = null;
 
@@ -472,47 +472,32 @@ function renderLogin(){
   const L = S.login;
   let body;
   if (S.user && !S.isRH) body = `<p>Você entrou como <b>${esc(S.user.email)}</b>, que não tem acesso ao painel do RH.</p><button type="button" class="btn" id="lg-out">Sair</button>`;
-  else if (L.needConfirm) body = `
-    <p class="meta">Para concluir o acesso, confirme o e-mail que recebeu o link.</p>
-    <label class="label" for="lg-email">E-mail</label><input type="text" id="lg-email" inputmode="email" autocomplete="email">
-    <button type="button" class="btn primary" id="lg-confirm" ${L.busy?"disabled":""}>Entrar</button>`;
-  else if (L.sent) body = `<p>Enviamos um link de acesso para <b>${esc(L.sent)}</b>.</p><p class="meta">Abra o e-mail <b>neste mesmo navegador</b> e clique no link. Se não chegar em alguns minutos, olhe a caixa de spam.</p><button type="button" class="btn" id="lg-again">Enviar de novo</button>`;
   else body = `
-    <p class="meta">O painel com as respostas é restrito ao RH. Informe seu e-mail para receber um link de acesso.</p>
-    <label class="label" for="lg-email">E-mail</label><input type="text" id="lg-email" inputmode="email" autocomplete="email">
-    <button type="button" class="btn primary" id="lg-send" ${L.busy?"disabled":""}>${L.busy?"Enviando…":"Enviar link de acesso"}</button>`;
+    <p class="meta">O painel com as respostas é restrito ao RH.</p>
+    <label class="label" for="lg-email">E-mail</label><input type="text" id="lg-email" inputmode="email" autocomplete="username" value="${esc(L.email)}">
+    <label class="label" for="lg-pass">Senha</label><input type="password" id="lg-pass" autocomplete="current-password" style="width:100%;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 9px">
+    <button type="button" class="btn primary" id="lg-go" ${L.busy?"disabled":""}>${L.busy?"Entrando…":"Entrar"}</button>`;
   $("view").innerHTML = `<div class="login"><h2>Painel do RH</h2>${body}${L.msg?`<div class="notice err" style="margin:0">${esc(L.msg)}</div>`:""}</div>`;
   $("lg-out")?.addEventListener("click", () => signOut(auth));
-  $("lg-again")?.addEventListener("click", () => { L.sent=false; L.msg=null; renderLogin(); });
-  $("lg-send")?.addEventListener("click", sendLink);
-  $("lg-confirm")?.addEventListener("click", () => completeLink(($("lg-email").value||"").trim().toLowerCase()));
-  $("lg-email")?.addEventListener("keydown", e => { if (e.key==="Enter") ($("lg-send")||$("lg-confirm"))?.click(); });
+  $("lg-go")?.addEventListener("click", doLogin);
+  ["lg-email","lg-pass"].forEach(id => $(id)?.addEventListener("keydown", e => { if (e.key==="Enter") doLogin(); }));
 }
-async function sendLink(){
-  const L = S.login, em = ($("lg-email").value||"").trim().toLowerCase();
+async function doLogin(){
+  const L = S.login, em = ($("lg-email").value||"").trim().toLowerCase(), pw = $("lg-pass").value||"";
+  L.email = em;
   if (!RH_EMAILS.includes(em)) { L.msg = "Este e-mail não tem acesso ao painel do RH."; renderLogin(); return; }
+  if (!pw) { L.msg = "Digite a senha."; renderLogin(); $("lg-pass")?.focus(); return; }
   L.busy = true; L.msg = null; renderLogin();
-  try {
-    await sendSignInLinkToEmail(auth, em, { url: location.origin + location.pathname, handleCodeInApp: true });
-    store.set("acc-rh-email", em); L.sent = em;
-  } catch (e) {
+  try { await signInWithEmailAndPassword(auth, em, pw); L.msg = null; }
+  catch (e) {
     console.error(e);
     const c = e && e.code;
-    L.msg = c==="auth/operation-not-allowed" ? "O login por link de e-mail não está ativado no Firebase (Authentication → Método de login → E-mail/senha → Link do e-mail)."
-      : (c==="auth/unauthorized-continue-uri" || c==="auth/unauthorized-domain") ? "Este site não está nos domínios autorizados do Firebase (Authentication → Configurações → Domínios autorizados)."
-      : c==="auth/quota-exceeded" ? "Limite diário de envio de links atingido. Tente amanhã."
-      : `Não foi possível enviar o link (${c || "erro desconhecido"}). Tente de novo em alguns minutos.`;
+    L.msg = (c==="auth/invalid-credential" || c==="auth/wrong-password" || c==="auth/user-not-found" || c==="auth/invalid-login-credentials") ? "E-mail ou senha incorretos."
+      : c==="auth/too-many-requests" ? "Muitas tentativas. Aguarde alguns minutos e tente de novo."
+      : c==="auth/operation-not-allowed" ? "O login por e-mail e senha não está ativado no Firebase."
+      : `Não foi possível entrar (${c || "erro desconhecido"}).`;
   }
-  L.busy = false; renderLogin();
-}
-async function completeLink(em){
-  const L = S.login; L.busy = true; L.msg = null;
-  try {
-    await signInWithEmailLink(auth, em, location.href);
-    store.del("acc-rh-email"); L.needConfirm = false;
-    history.replaceState(null, "", location.pathname + "#painel"); render();
-  } catch (e) { console.error(e); L.msg = "O link é inválido ou expirou. Peça um novo link."; L.needConfirm = false; history.replaceState(null, "", location.pathname + "#painel"); }
-  L.busy = false; if (route()==="painel" && !S.isRH) renderLogin();
+  L.busy = false; if (!S.isRH) renderLogin();
 }
 
 /* ---------- PAINEL ---------- */
@@ -615,11 +600,6 @@ function onData(){
 }
 function boot(){
   const a = parseInt(store.get("acc-area"),10); if (a>=0 && a<AREAS.length) S.area=a;
-  if (isSignInWithEmailLink(auth, location.href)) {
-    location.hash = "#painel";
-    const em = store.get("acc-rh-email");
-    if (em) completeLink(em); else S.login.needConfirm = true;
-  }
   render();
   const timer = setTimeout(()=>{ S.slow=true; renderNotices(); }, 10000);
   onSnapshot(collection(db, "status"), snap => {
@@ -628,7 +608,7 @@ function boot(){
   }, err => { console.error(err); clearTimeout(timer); S.err = err.code==="permission-denied" ? "Acesso ao banco recusado. Avise o RH." : "Verifique sua conexão e recarregue a página."; renderNotices(); });
   onAuthStateChanged(auth, u => {
     S.user = u;
-    S.isRH = !!(u && u.emailVerified && RH_EMAILS.includes((u.email||"").toLowerCase()));
+    S.isRH = !!(u && RH_EMAILS.includes((u.email||"").toLowerCase()));
     if (unsubResp) { unsubResp(); unsubResp = null; S.resp = {}; }
     if (S.isRH) unsubResp = onSnapshot(collection(db, "respostas"), snap => {
       const next={}; snap.docs.forEach(d=>{ if(BYID[d.id]) next[d.id]=d.data(); }); S.resp=next; onData();
