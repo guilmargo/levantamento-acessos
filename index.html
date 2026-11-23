@@ -302,8 +302,8 @@ function renderResponder(){
   bindEditor();
 }
 function go(t){
-  if (S.dirty && !(t.cargo && t.cargo===S.cargo)) { S.pendingGo = t; S.msg = { cls:"dirty", txt:"Você tem alterações não salvas neste cargo." }; rerenderEditor(); $("save-st")?.scrollIntoView({block:"nearest"}); return; }
-  applyGo(t);
+  if (t.cargo && t.cargo===S.cargo) return;
+  S.dirty = false; applyGo(t);
 }
 function applyGo(t){
   S.pendingGo = null; S.msg = null; S.showMissing = false;
@@ -323,7 +323,6 @@ function editorHTML(){
     if (S.isRH && S.resp[S.cargo]) meta += ` por ${esc(S.resp[S.cargo].respondenteNome)}`;
     if (!S.isRH && !S.mine[S.cargo]) meta += `. Se você enviar de novo, a resposta anterior será substituída.`;
   }
-  const copyFrom = CARGOS.filter(x => x.id!==S.cargo && (S.mine[x.id] || (S.isRH && S.resp[x.id])));
   return `
   <div class="edhead">
     <div style="min-width:0">
@@ -336,7 +335,6 @@ function editorHTML(){
       <span class="steps">${CATS.map(k=>`<i class="${answered({[k.k]:cs[k.k]})?"on":""}" title="${esc(k.n)}"></i>`).join("")}</span>
     </div>
   </div>
-  ${copyFrom.length ? `<div class="toolbar"><label class="label" for="sel-copy">Copiar respostas de outro cargo:</label><select id="sel-copy" style="flex:1 1 260px;width:auto"><option value="">Escolha um cargo que você já respondeu…</option>${copyFrom.map(x=>`<option value="${x.id}">${esc(x.cargo)} · ${esc(x.area)}</option>`).join("")}</select></div>` : ""}
   ${CATS.map(k => catHTML(k, cs[k.k])).join("")}
   <div class="who">
     <h3>Quem está respondendo</h3>
@@ -408,12 +406,6 @@ function bindEditor(){
     if (first) rerenderEditor(); else { const st=$("save-st"); if(st && !S.pendingGo){ st.className="st dirty"; st.textContent="Alterações não salvas"; } }
   };
   ed.onkeydown = e => { if (e.key==="Enter" && e.target.dataset.other) { e.preventDefault(); addCustom(e.target.dataset.other); } };
-  ed.onchange = e => {
-    if (e.target.id === "sel-copy" && e.target.value) {
-      S.draft.cats = savedCats(e.target.value) || emptyCats();
-      setDirty(); S.msg = { cls:"dirty", txt:"Respostas copiadas. Revise e envie." }; rerenderEditor();
-    }
-  };
   ed.onclick = e => {
     const b = e.target.closest("[data-act]"); if (!b || b.disabled) return;
     const act = b.dataset.act, kk = b.dataset.k, st = kk && S.draft.cats[kk];
